@@ -60,5 +60,6 @@ function find(lat, lon, radius) {
 
 module.exports = {
     trace: trace,
-    getLocation: getLocation
+    getLocation: getLocation,
+    find: find
 };
