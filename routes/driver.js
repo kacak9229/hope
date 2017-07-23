@@ -1,10 +1,18 @@
 const router = require('express').Router();
 
-/* GET LAT AND LONG FROM THE DRIVER */
-router.get('/trace', (req, res, next) => {
-    let lat = req.body.driver_lat;
-    let long = req.body.driver_lat;
-    res.json(`${lat} ${long}`);
+router.post('/trace', (req, res, next) => {
+    let driverId = req.body.driver_id;
+    let lat = req.body.lat;
+    let lon = req.body.lon;
+
+    //TODO: Check if post values are in acceptable format and are valid
+    //TODO: Check if lat/lon values are correct
+
+    res.json([
+        lat,
+        lon,
+        driverId
+    ]);
 });
 
 module.exports = router;
