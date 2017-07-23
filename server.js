@@ -8,6 +8,8 @@ const jwt = require('jsonwebtoken');
 const expressHbs = require('express-handlebars');
 
 const config = require('./config/secret');
+global.config = config;
+
 const app = express();
 
 /* Connecting to the MongoDB database */
@@ -28,6 +30,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 /* Middleware for checking verifying web token */
+/*
 app.use((req, res, next) => {
   // check header or url parameters or post parameters for token
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
@@ -52,6 +55,7 @@ app.use((req, res, next) => {
     });
   }
 });
+*/
 
 /* APIS'S URL */
 const accountRoutes = require('./routes/account');
@@ -60,9 +64,9 @@ const driverRoutes = require('./routes/driver');
 const jobRoutes = require('./routes/job');
 const webRoutes = require('./routes/web');
 
-app.use('/api/account', accountRoutes);
-app.use('/api/passenger', passengerRoutes);
-app.use('/api/driver', driverRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/passengers', passengerRoutes);
+app.use('/api/drivers', driverRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use(webRoutes);
 /* END APIS'S URL */
