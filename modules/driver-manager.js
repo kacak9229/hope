@@ -44,8 +44,17 @@ function getLocation(driverId) {
  */
 function find(lat, lon, radius) {
     let deferred = Q.defer();
+    const findOptions = {
+        withCoordinates: true,
+        withHashes: true,
+        withDistances: true,
+        order: 'ASC',
+        units: 'm',
+        count: 50,
+        accurate: false // Useful if in emulated mode and accuracy is important, default false
+    };
 
-    geo.nearby({latitude: lat, longitude: lon}, radius, (err, locations) => {
+    geo.nearby({latitude: lat, longitude: lon}, radius, findOptions, (err, locations) => {
         if(err) {
             logger.error('Could not driver\'s!', err);
             deferred.reject(new Error(err));
