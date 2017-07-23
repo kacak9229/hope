@@ -4,5 +4,9 @@ module.exports = {
   secret: process.env.SECRET || 'Naufal888**@#@###$$$%%199230',
   logging: {
     level: 'debug'
+  },
+  redis: {
+    host: 'localhost',
+    port: 6379
   }
 };
