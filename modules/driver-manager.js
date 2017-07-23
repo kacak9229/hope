@@ -35,6 +35,29 @@ function getLocation(driverId) {
     return deferred.promise;
 }
 
+/**
+ * Finds nearby drivers to the lat, lon
+ * @param lat
+ * @param lon
+ * @param radius in meter
+ * @returns {*|promise}
+ */
+function find(lat, lon, radius) {
+    let deferred = Q.defer();
+
+    geo.nearby({latitude: lat, longitude: lon}, radius, (err, locations) => {
+        if(err) {
+            logger.error('Could not driver\'s!', err);
+            deferred.reject(new Error(err));
+        }
+        else {
+            deferred.resolve(locations);
+        }
+    });
+
+    return deferred.promise;
+}
+
 module.exports = {
     trace: trace,
     getLocation: getLocation
