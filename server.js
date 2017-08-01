@@ -6,11 +6,14 @@ const mongoose = require('mongoose');
 const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
 const expressHbs = require('express-handlebars');
+const nunjucks = require('nunjucks');
 
 const config = require('./config/secret');
 global.config = config;
 
 const app = express();
+const server = require('http').Server(app);
+const io = require('./modules/socketio')(server);
 
 /* Connecting to the MongoDB database */
 mongoose.connect(config.database, { useMongoClient: true }, (err) => {
@@ -20,8 +23,14 @@ mongoose.connect(config.database, { useMongoClient: true }, (err) => {
 
 app.use(helmet());
 /* Middlewares for setting up templates and static folders - SPECIFICALLY FOR BUILDING WEB PAGES LATER ON */
-app.engine('.hbs', expressHbs({ defaultLayout: 'layout', extname: '.hbs' }));
-app.set('view engine', '.hbs');
+nunjucks.configure('views', {
+    autoescape: true,
+    express: app,
+    watch: true,
+    noCache: true
+});
+
+app.set('view engine', 'html');
 app.use(express.static(__dirname + '/public'));
 /* END */
 
@@ -71,7 +80,7 @@ app.use('/api/jobs', jobRoutes);
 app.use(webRoutes);
 /* END APIS'S URL */
 
-app.listen(config.port, (err) => {
+server.listen(config.port, (err) => {
   if (err) console.log(err);
   console.log(`Running on port ${config.port}`);
 });
