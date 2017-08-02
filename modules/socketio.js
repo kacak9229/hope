@@ -18,7 +18,7 @@ function connection(socket) {
     });
 
     socket.on('book', (msg) => {
-      print(msg)
+      console.log(msg)
       socket.broadcast.emit('toAllDrivers', {
         stats: 'OK',
         msg: msg
