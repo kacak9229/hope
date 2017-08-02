@@ -17,6 +17,13 @@ function connection(socket) {
         });
     });
 
+    socket.on('book', (msg) => {
+      socket.broadcast.emit('toAllDrivers', {
+        stats: 'OK',
+        msg: msg
+      });
+    });
+
     socket.on('disconnect', () => {
         console.log('Disconnected', socket.id);
         console.log('total connections: ', io.engine.clientsCount);
@@ -36,4 +43,3 @@ module.exports = function(server=null) {
 
     return io;
 };
-
