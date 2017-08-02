@@ -6,7 +6,7 @@ module.exports = {
     level: 'debug'
   },
   redis: {
-    host: 'localhost',
-    port: 6379
+    host: 'redis-10411.c15.us-east-1-2.ec2.cloud.redislabs.com',
+    port: 10411
   }
 };
