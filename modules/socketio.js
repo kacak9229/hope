@@ -25,6 +25,14 @@ function connection(socket) {
       });
     });
 
+    socket.on('acceptJob', (msg) => {
+      console.log(msg)
+      socket.emit(msg.passenger_id, {
+        stats: 'OK',
+        msg: msg
+      });
+    });
+
     socket.on('disconnect', () => {
         console.log('Disconnected', socket.id);
         console.log('total connections: ', io.engine.clientsCount);
