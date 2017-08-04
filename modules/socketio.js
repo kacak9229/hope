@@ -4,6 +4,8 @@ const driverManager = require('./../modules/driver-manager');
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
 
+    console.log(socket.decoded_token);
+
     socket.on('message', (msg) => {
         socket.emit('message', {
             stats: 'OK',
