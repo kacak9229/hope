@@ -1,4 +1,5 @@
 let io;
+const driverManager = require('./../modules/driver-manager');
 
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
@@ -10,12 +11,33 @@ function connection(socket) {
         });
     });
 
+    socket.on('trace', (msg) => {
+      let driverId = socket.decoded_token._id// Driver Id
+      let lat = msg.lat;
+      let lon = msg.lon;
+
+      driverManager.trace(driverId, lat, lon)
+          .then(reply => {
+              res.json({
+                  status: 'OK',
+                  reply: reply
+              });
+          })
+          .catch(err => {
+              res.json({
+                  status: 'Failed',
+                  err: err
+              });
+          });
+    });
+
     socket.on('auth', (msg) => {
         socket.emit('message', {
             stats: 'OK',
             msg: msg
         });
     });
+
 
     socket.on('book', (msg) => {
       console.log(msg)
