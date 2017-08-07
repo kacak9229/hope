@@ -70,10 +70,13 @@ router.get('/get-location', function(req, res) {
 router.get('/find', checkJWT, function(req, res) {
     const lat = req.query.lat;
     const lon = req.query.lon;
-    const radius = req.query.radius;
+    const radius = +req.query.radius;
+
+    //console.log(`Customer's lat and lon: `, req.query);
 
     driverManager.find(lat, lon, radius)
         .then(drivers => {
+            //console.log('Found the following drivers: ', drivers)
             res.json(drivers);
         })
         .catch(err => {

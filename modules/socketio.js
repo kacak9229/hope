@@ -1,10 +1,9 @@
 let io;
 const driverManager = require('./../modules/driver-manager');
+const redisClient = require('./redis').client;
 
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
-
-    console.log(socket.decoded_token);
 
     socket.on('message', (msg) => {
         socket.emit('message', {
@@ -14,9 +13,14 @@ function connection(socket) {
     });
 
     socket.on('trace', (msg) => {
-      let driverId = socket.decoded_token._id// Driver Id
+      let driverId = msg.driver_id + '';
       let lat = msg.lat;
-      let lon = msg.lon;
+      let lon = msg.long;
+
+      console.log('trace is: ', msg);
+
+      redisClient.set(driverId, socket.id);
+      //console.log(`Driver id: ${driverId} is mapped with socket id: ${socket.id} with data: `, msg);
 
       driverManager.trace(driverId, lat, lon)
           .then(reply => {
@@ -42,11 +46,37 @@ function connection(socket) {
 
 
     socket.on('book', (msg) => {
-      console.log(msg)
+      let customerId = msg.user_id;
+      let lat = msg.lat;
+      let lon = msg.long;
+
+      console.info(`received booking: `, msg);
+
+      redisClient.set(customerId, socket.id);
+      //console.log(`Customer id: ${customerId} is mapped with socket id: ${socket.id}`);
+
+      driverManager.find(lat, lon, 5000)
+        .then(drivers => {
+            console.log(`Found drivers for booking: `, drivers);
+            drivers.forEach((driver) => {
+                redisClient.get('501', function(err, driverSocketId) {
+                    io.to(driverSocketId).emit('toAllDrivers', msg);
+                });
+            });
+        })
+        .catch(err => {
+          res.json({
+            status: 'Failed',
+            err: err
+          });
+        });
+
+      /*
       socket.broadcast.emit('toAllDrivers', {
         stats: 'OK',
         msg: msg
       });
+      */
     });
 
     socket.on('acceptJob', (msg) => {
