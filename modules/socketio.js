@@ -58,8 +58,11 @@ function connection(socket) {
       driverManager.find(lat, lon, 5000)
         .then(drivers => {
             console.log(`Found drivers for booking: `, drivers);
+            //TODO: Make it q.all promise based instead
             drivers.forEach((driver) => {
-                redisClient.get('501', function(err, driverSocketId) {
+                console.log('Sending case to driver: ', driver);
+
+                redisClient.get(driver.key, function(err, driverSocketId) {
                     io.to(driverSocketId).emit('toAllDrivers', msg);
                 });
             });
@@ -79,12 +82,9 @@ function connection(socket) {
       */
     });
 
-    socket.on('acceptJob', (msg) => {
-      console.log(msg)
-      socket.emit(msg.passenger_id, {
-        stats: 'OK',
-        msg: msg
-      });
+    socket.on('acceptJob', (job) => {
+      console.log(job);
+      //redisClient.sadd()
     });
 
     socket.on('disconnect', () => {
