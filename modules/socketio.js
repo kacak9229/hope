@@ -2,6 +2,14 @@ let io;
 const driverManager = require('./../modules/driver-manager');
 const redisClient = require('./redis').client;
 
+let cases = {};
+
+
+function handleBooking(customerId) {
+    console.log('BOOKING: ', customerId);
+    console.log('Job info ==> ', cases[customerId]);
+}
+
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
 
@@ -54,6 +62,11 @@ function connection(socket) {
 
       redisClient.set(customerId, socket.id);
       //console.log(`Customer id: ${customerId} is mapped with socket id: ${socket.id}`);
+      cases['112233'] = [];
+
+      setTimeout(function() {
+          handleBooking('112233');
+      }, 10000);
 
       driverManager.find(lat, lon, 5000)
         .then(drivers => {
@@ -83,8 +96,10 @@ function connection(socket) {
     });
 
     socket.on('acceptJob', (job) => {
-      console.log(job);
-      //redisClient.sadd()
+      console.log('ACCPETED JOB: ', job);
+      //redisClient.sadd(job.customer_id + '', job.driver_id);
+      //redisClient.lpush('12313123', job.driver_id);
+      cases['112233'].push(job.driver_id);
     });
 
     socket.on('disconnect', () => {
