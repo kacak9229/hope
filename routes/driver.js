@@ -2,6 +2,7 @@ const logger = require('./../modules/logger');
 const driverManager = require('./../modules/driver-manager');
 const router = require('express').Router();
 const checkJWT = require('../middlewares/checking-jwt');
+const redisClient = require('./../modules/redis').client;
 
 /**
  * Stores driver's location
@@ -67,13 +68,18 @@ router.get('/get-location', function(req, res) {
 /**
  * Find nearby drivers
  */
-router.get('/find', checkJWT, function(req, res) {
+router.get('/find', function(req, res) {
     const lat = req.query.lat;
     const lon = req.query.lon;
-    const radius = req.query.radius;
+    const radius = +req.query.radius;
+
+    //console.log(`Customer's lat and lon: `, req.query);
+
+    //redisClient.flushall();
 
     driverManager.find(lat, lon, radius)
         .then(drivers => {
+            //console.log('Found the following drivers: ', drivers)
             res.json(drivers);
         })
         .catch(err => {

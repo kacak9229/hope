@@ -1,34 +1,97 @@
 {% extends 'layout.html' %}
 
 {% block content %}
+    <script>
+        const socket = io.connect('http://localhost:3000');
+
+        socket.on('connect', function () {
+            console.log('I am connected');
+
+            socket.emit('auth', {
+                username: 'ahsanul',
+                password: 'password'
+            });
+        });
+
+        socket.on('message', function (data) {
+            console.log('message received', data);
+        });
+
+        socket.on('disconnect', function () {
+            console.log('Disconnected');
+        });
+
+        /**
+         * Driver sends trace
+         */
+        function trace() {
+            socket.emit('trace', {
+                driver_id: 'd-100',
+                lat: 3.10541,
+                long: 101.62056889999997
+            });
+        }
+
+        /**
+         * Customer books
+         */
+        function book() {
+            socket.emit('book', {
+                user_id: 'c-100',
+                lat: 3.102034,
+                long: 101.62643300000002
+            });
+        }
+
+        /**
+         * Driver accepts job
+         */
+        function acceptJob() {
+            socket.emit('acceptJob', {
+                customer_id: 'c-100',
+                driver_id: 'd-100'
+            });
+        }
+    </script>
+
     <div class="container theme-showcase" role="main">
         <br>
         <br>
-
-
         <div class="page-header">
-            <h1>Buttons</h1>
+            <h1>Grab driver simulation</h1>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">Driver trace</div>
+                        <div class="panel-body">
+                            <button onclick="trace()">Trace</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">Driver accepts job</div>
+                        <div class="panel-body">
+                            <button onclick="acceptJob()">Accept</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <script>
-            var socket = io.connect('http://localhost:3000');
+        <div class="page-header">
+            <h1>Customer simulation</h1>
 
-            socket.on('connect', function () {
-                console.log('I am connected');
-
-                socket.emit('auth', {
-                    username: 'ahsanul',
-                    password: 'password'
-                });
-            });
-
-            socket.on('message', function (data) {
-                console.log('message received', data);
-            });
-
-            socket.on('disconnect', function () {
-                console.log('Disconnected');
-            });
-        </script>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">Make a booking</div>
+                        <div class="panel-body">
+                            <button onclick="book()">Book</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 {% endblock %}
