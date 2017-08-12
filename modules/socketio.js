@@ -62,10 +62,10 @@ function connection(socket) {
 
       redisClient.set(customerId, socket.id);
       //console.log(`Customer id: ${customerId} is mapped with socket id: ${socket.id}`);
-      cases['112233'] = [];
+      cases[customerId] = [];
 
       setTimeout(function() {
-          handleBooking('112233');
+          handleBooking(customerId);
       }, 10000);
 
       driverManager.find(lat, lon, 5000)
@@ -96,10 +96,11 @@ function connection(socket) {
     });
 
     socket.on('acceptJob', (job) => {
+      const customerId = job.customer_id;
       console.log('ACCPETED JOB: ', job);
       //redisClient.sadd(job.customer_id + '', job.driver_id);
       //redisClient.lpush('12313123', job.driver_id);
-      cases['112233'].push(job.driver_id);
+      cases[customerId].push(job.driver_id);
     });
 
     socket.on('disconnect', () => {
