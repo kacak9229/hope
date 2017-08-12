@@ -4,8 +4,31 @@ const redisClient = require('./redis').client;
 
 function handleBooking(customerId) {
     console.log('BOOKING: ', customerId);
-    redisClient.smembers(customerId, function(err, reply) {
-        console.log('Job info ==> ', reply);
+    redisClient.smembers(customerId, function(err, driverIds) {
+        console.log('Job info ==> ', driverIds);
+
+        if(driverIds.length > 0) {
+            //TODO: choose the nearest one
+            let driverId = driverIds[0];
+            console.log('Confirming job to driver: ', driverId);
+
+            redisClient.get(driverId, function(err, driverSocketId) {
+                io.to(driverSocketId).emit('job', {
+                    customerId: customerId
+                });
+
+                //confirm customer
+                redisClient.get(`sock-${customerId}`, function(customerSockerId) {
+                    io.to(customerSockerId).emit('bookResponse', [driverId]);
+                });
+            });
+        }
+        else {
+            console.info(`No drivers were found`);
+            redisClient.get(`sock-${customerId}`, function(customerSockerId) {
+                io.to(customerSockerId).emit('bookResponse', []);
+            });
+        }
     });
 }
 
