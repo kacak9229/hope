@@ -2,12 +2,11 @@ let io;
 const driverManager = require('./../modules/driver-manager');
 const redisClient = require('./redis').client;
 
-let cases = {};
-
-
 function handleBooking(customerId) {
     console.log('BOOKING: ', customerId);
-    console.log('Job info ==> ', cases[customerId]);
+    redisClient.smembers(customerId, function(err, reply) {
+        console.log('Job info ==> ', reply);
+    });
 }
 
 function connection(socket) {
@@ -60,9 +59,12 @@ function connection(socket) {
 
       console.info(`received booking: `, msg);
 
-      redisClient.set(customerId, socket.id);
+      redisClient.set(`sock-${customerId}`, socket.id);
       //console.log(`Customer id: ${customerId} is mapped with socket id: ${socket.id}`);
-      cases[customerId] = [];
+
+      redisClient.del(customerId, function(err, reply) {
+         console.log(`Set deleted: ${customerId}`);
+      });
 
       setTimeout(function() {
           handleBooking(customerId);
@@ -98,9 +100,10 @@ function connection(socket) {
     socket.on('acceptJob', (job) => {
       const customerId = job.customer_id;
       console.log('ACCPETED JOB: ', job);
-      //redisClient.sadd(job.customer_id + '', job.driver_id);
-      //redisClient.lpush('12313123', job.driver_id);
-      cases[customerId].push(job.driver_id);
+
+      redisClient.sadd([customerId, job.driver_id], function(err, reply) {
+        console.log(`Driver added to accept queue: ${customerId}`);
+      });
     });
 
     socket.on('disconnect', () => {
