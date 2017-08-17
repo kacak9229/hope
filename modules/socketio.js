@@ -65,7 +65,7 @@ function connection(socket) {
       console.log('trace is: ', msg);
 
       redisClient.set(driverId, socket.id);
-      redisClient.expire(driverId, 10);
+      //redisClient.expire(driverId, 10);
 
         //console.log(`Driver id: ${driverId} is mapped with socket id: ${socket.id} with data: `, msg);
 
@@ -117,7 +117,6 @@ function connection(socket) {
             drivers.forEach((driver) => {
                 console.log('Sending case to driver: ', driver);
 
-                q
                 redisClient.get(driver.key, function(err, driverSocketId) {
                     io.to(driverSocketId).emit('toAllDrivers', msg);
                 });
