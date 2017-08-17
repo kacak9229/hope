@@ -1,6 +1,8 @@
 let io;
+const config = require('../config/secret');
 const driverManager = require('./../modules/driver-manager');
 const redisClient = require('./redis').client;
+const socketioJwt   = require("socketio-jwt");
 
 function handleBooking(customerId) {
     console.log('BOOKING: ', customerId);
@@ -22,8 +24,7 @@ function handleBooking(customerId) {
                     io.to(customerSockerId).emit('bookResponse', [driverId]);
                 });
             });
-        }
-        else {
+        } else {
             console.info(`No drivers were found`);
             redisClient.get(`sock-${customerId}`, function(customerSockerId) {
                 io.to(customerSockerId).emit('bookResponse', []);
@@ -34,6 +35,8 @@ function handleBooking(customerId) {
 
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
+    // console.log(socket.decoded_token._doc.email);
+    console.log(socket.decoded_token._doc);
 
     socket.on('message', (msg) => {
         socket.emit('message', {
@@ -122,7 +125,7 @@ function connection(socket) {
 
     socket.on('acceptJob', (job) => {
       const customerId = job.customer_id;
-      console.log('ACCPETED JOB: ', job);
+      console.log('ACCEPTED JOB: ', job);
 
       redisClient.sadd([customerId, job.driver_id], function(err, reply) {
         console.log(`Driver added to accept queue: ${customerId}`);
@@ -144,7 +147,11 @@ module.exports = function(server=null) {
         io = require('socket.io')(server);
     }
 
-    io.sockets.on('connection', connection);
+    // io.sockets.on('connection', connection);
+    io.sockets.on('connection', socketioJwt.authorize({
+      secret: config.secret,
+      timeout: 20000 // 15 seconds to send the authentication message
+    })).on('authenticated', connection)
 
     return io;
 };
