@@ -1,6 +1,7 @@
 const logger = require('./logger');
 const geo = require('./redis').geo;
 const Q = require('q');
+const User = require('../models/user');
 
 function trace(driverId, lat, lon) {
     let deferred = Q.defer();
@@ -15,7 +16,7 @@ function trace(driverId, lat, lon) {
             deferred.resolve(reply);
         }
     });
-    
+
     return deferred.promise;
 }
 
@@ -67,8 +68,21 @@ function find(lat, lon, radius) {
     return deferred.promise;
 }
 
+//Refactor me: put me in a common function
+function findByFacebookId(facebookId) {
+    const deferred = Q.defer();
+
+    User.findOne({facebookId: facebookId}, function(err, user) {
+        if(user) deferred.resolve(user);
+        else deferred.reject(new Error(err));
+    });
+
+    return deferred.promise;
+}
+
 module.exports = {
     trace: trace,
     getLocation: getLocation,
-    find: find
+    find: find,
+    findByFacebookId: findByFacebookId
 };

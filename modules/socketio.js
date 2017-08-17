@@ -1,8 +1,10 @@
 let io;
 const config = require('../config/secret');
 const driverManager = require('./../modules/driver-manager');
+const customerManager = require('../modules/customer-manager');
 const redisClient = require('./redis').client;
 const socketioJwt   = require("socketio-jwt");
+const Q = require('q');
 
 function handleBooking(customerId) {
     console.log('BOOKING: ', customerId);
@@ -23,6 +25,17 @@ function handleBooking(customerId) {
                 redisClient.get(`sock-${customerId}`, function(customerSockerId) {
                     io.to(customerSockerId).emit('bookResponse', [driverId]);
                 });
+
+                q.all([
+                    customerManager.findByFacebookId(customerId),
+                    driverManager.findByFacebookId(driverId)
+                ])
+                .then(function(users) {
+                    console.log('Found customer and driver in mongo: ', users);
+                })
+                .catch((err) => {
+                    console.error('Error finding customer and driver from DB', err);
+                });
             });
         } else {
             console.info(`No drivers were found`);
@@ -35,8 +48,7 @@ function handleBooking(customerId) {
 
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
-    // console.log(socket.decoded_token._doc.email);
-    console.log(socket.decoded_token._doc);
+    console.log(socket.decoded_token._doc.email);
 
     socket.on('message', (msg) => {
         socket.emit('message', {
@@ -53,7 +65,9 @@ function connection(socket) {
       console.log('trace is: ', msg);
 
       redisClient.set(driverId, socket.id);
-      //console.log(`Driver id: ${driverId} is mapped with socket id: ${socket.id} with data: `, msg);
+      redisClient.expire(driverId, 10);
+
+        //console.log(`Driver id: ${driverId} is mapped with socket id: ${socket.id} with data: `, msg);
 
       driverManager.trace(driverId, lat, lon)
           .then(reply => {
@@ -103,6 +117,7 @@ function connection(socket) {
             drivers.forEach((driver) => {
                 console.log('Sending case to driver: ', driver);
 
+                q
                 redisClient.get(driver.key, function(err, driverSocketId) {
                     io.to(driverSocketId).emit('toAllDrivers', msg);
                 });
@@ -147,11 +162,13 @@ module.exports = function(server=null) {
         io = require('socket.io')(server);
     }
 
-    // io.sockets.on('connection', connection);
-    io.sockets.on('connection', socketioJwt.authorize({
-      secret: config.secret,
-      timeout: 20000 // 15 seconds to send the authentication message
-    })).on('authenticated', connection)
+    io.sockets
+        .on('connection', socketioJwt.authorize({
+            secret: config.secret,
+            timeout: 15000 // 15 seconds to send the authentication message
+        })).on('authenticated', function(socket) {
+            connection(socket);
+        });
 
     return io;
 };
