@@ -22,11 +22,11 @@ function handleBooking(customerId) {
                 });
 
                 //confirm customer
-                redisClient.get(`sock-${customerId}`, function(customerSockerId) {
+                redisClient.get(`sock-${customerId}`, function(err, customerSockerId) {
                     io.to(customerSockerId).emit('bookResponse', [driverId]);
                 });
 
-                q.all([
+                Q.all([
                     customerManager.findByFacebookId(customerId),
                     driverManager.findByFacebookId(driverId)
                 ])
@@ -39,7 +39,7 @@ function handleBooking(customerId) {
             });
         } else {
             console.info(`No drivers were found`);
-            redisClient.get(`sock-${customerId}`, function(customerSockerId) {
+            redisClient.get(`sock-${customerId}`, function(err, customerSockerId) {
                 io.to(customerSockerId).emit('bookResponse', []);
             });
         }
