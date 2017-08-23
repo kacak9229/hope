@@ -5,6 +5,7 @@ const customerManager = require('../modules/customer-manager');
 const redisClient = require('./redis').client;
 const socketioJwt   = require("socketio-jwt");
 const Q = require('q');
+const Job = require('../models/job');
 
 function handleBooking(customerId) {
     console.log('BOOKING: ', customerId);
@@ -32,6 +33,23 @@ function handleBooking(customerId) {
                 ])
                 .then(function(users) {
                     console.log('Found customer and driver in mongo: ', users);
+                    //Save
+
+                    let job = new Job();
+                    job.passenger = users[0]._id;
+                    job.driver = users[1]._id;
+
+                    job.source_location.address = 'sample source address';
+                    job.source_location.coordinates.lat = 101;
+                    job.source_location.coordinates.long = 101;
+
+                    job.to_location.address = 'Sample destination';
+                    job.to_location.coordinates.lat = 201;
+                    job.to_location.coordinates.long = 201;
+
+                    job.save((err) => {
+                        console.error(err);
+                    });
                 })
                 .catch((err) => {
                     console.error('Error finding customer and driver from DB', err);
@@ -48,7 +66,7 @@ function handleBooking(customerId) {
 
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
-    console.log(socket.decoded_token._doc.facebookId);
+    console.log(socket.decoded_token._doc);
 
     socket.on('message', (msg) => {
         socket.emit('message', {
