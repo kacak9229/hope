@@ -17,6 +17,8 @@ function trace(driverId, lat, lon) {
         }
     });
 
+
+
     return deferred.promise;
 }
 

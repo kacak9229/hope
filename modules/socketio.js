@@ -18,8 +18,11 @@ function handleBooking(customerId) {
             console.log('Confirming job to driver: ', driverId);
 
             redisClient.get(driverId, function(err, driverSocketId) {
-                io.to(driverSocketId).emit('job', {
-                    customerId: customerId
+                redisClient.get(`job-${customerId}`, (err, j) => {
+                    io.to(driverSocketId).emit('job', {
+                        customerId: customerId,
+                        job: JSON.parse(j)
+                    });
                 });
 
                 //confirm customer
@@ -42,17 +45,30 @@ function handleBooking(customerId) {
                         else {
                             console.log('Found job in redis -->', j);
 
+                            const blinkJob = JSON.parse(j);
+
                             let job = new Job();
                             job.passenger = users[0]._id;
                             job.driver = users[1]._id;
 
+                            /*
+                             { secondLong: 101.7131072,
+                             user_id: '1958609537756426',
+                             lat: 3.17140845682656,
+                             price: 12.078,
+                             long: 101.6667575785114,
+                             secondLat: 3.148482 }
+                             */
+
                             job.source_location.address = 'sample source address';
-                            job.source_location.coordinates.lat = 101;
-                            job.source_location.coordinates.long = 101;
+                            job.source_location.coordinates.lat = blinkJob.lat;
+                            job.source_location.coordinates.long = blinkJob.long;
 
                             job.to_location.address = 'Sample destination';
-                            job.to_location.coordinates.lat = 201;
-                            job.to_location.coordinates.long = 201;
+                            job.to_location.coordinates.lat = blinkJob.secondLat;
+                            job.to_location.coordinates.long = blinkJob.secondLong;
+
+                            job.total_price = parseFloat(blinkJob.price).toFixed(2);
 
                             job.save((err) => {
                                 if(err) {
