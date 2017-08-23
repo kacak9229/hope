@@ -35,20 +35,34 @@ function handleBooking(customerId) {
                     console.log('Found customer and driver in mongo: ', users);
                     //Save
 
-                    let job = new Job();
-                    job.passenger = users[0]._id;
-                    job.driver = users[1]._id;
+                    redisClient.get(`job-${customerId}`, (err, j) => {
+                        if(err) {
+                            console.log('Error finding job in redis', err);
+                        }
+                        else {
+                            console.log('Found job in redis -->', j);
 
-                    job.source_location.address = 'sample source address';
-                    job.source_location.coordinates.lat = 101;
-                    job.source_location.coordinates.long = 101;
+                            let job = new Job();
+                            job.passenger = users[0]._id;
+                            job.driver = users[1]._id;
 
-                    job.to_location.address = 'Sample destination';
-                    job.to_location.coordinates.lat = 201;
-                    job.to_location.coordinates.long = 201;
+                            job.source_location.address = 'sample source address';
+                            job.source_location.coordinates.lat = 101;
+                            job.source_location.coordinates.long = 101;
 
-                    job.save((err) => {
-                        console.error(err);
+                            job.to_location.address = 'Sample destination';
+                            job.to_location.coordinates.lat = 201;
+                            job.to_location.coordinates.long = 201;
+
+                            job.save((err) => {
+                                if(err) {
+                                    console.error('ERROR saving job in Mongo: ', err);
+                                }
+                                else {
+                                    console.log('SUCCESSFULLY saved job in Mongo!');
+                                }
+                            });
+                        }
                     });
                 })
                 .catch((err) => {
@@ -118,6 +132,8 @@ function connection(socket) {
       console.info(`received booking: `, msg);
 
       redisClient.set(`sock-${customerId}`, socket.id);
+      redisClient.set(`job-${customerId}`, JSON.stringify(msg));
+
       //console.log(`Customer id: ${customerId} is mapped with socket id: ${socket.id}`);
 
       redisClient.del(customerId, function(err, reply) {
