@@ -48,7 +48,7 @@ function handleBooking(customerId) {
 
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
-    console.log(socket.decoded_token._doc.email);
+    console.log(socket.decoded_token._doc.facebookId);
 
     socket.on('message', (msg) => {
         socket.emit('message', {
@@ -161,13 +161,17 @@ module.exports = function(server=null) {
         io = require('socket.io')(server);
     }
 
-    io.sockets
-        .on('connection', socketioJwt.authorize({
-            secret: config.secret,
-            timeout: 15000 // 15 seconds to send the authentication message
-        })).on('authenticated', function(socket) {
-            connection(socket);
-        });
+    // io.sockets
+    //     .on('connection', socketioJwt.authorize({
+    //         secret: config.secret,
+    //         timeout: 15000 // 15 seconds to send the authentication message
+    //     })).on('authenticated', function(socket) {
+    //         console.log("Im here actually!");
+    //         connection(socket);
+    //     });
+
+
+    io.sockets.on('connection', connection);
 
     return io;
 };

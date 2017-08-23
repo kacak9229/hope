@@ -14,12 +14,13 @@ global.config = config;
 
 const app = express();
 const server = require('http').Server(app);
+
 const io = require('./modules/socketio')(server);
 
-// io.use(socketioJwt.authorize({
-//   secret: config.secret,
-//   handshake: true
-// }));
+io.use(socketioJwt.authorize({
+  secret: config.secret,
+  handshake: true
+}));
 
 /* Connecting to the MongoDB database */
 mongoose.connect(config.database, { useMongoClient: true }, (err) => {
