@@ -2,6 +2,19 @@ const logger = require('./logger');
 const geo = require('./redis').geo;
 const Q = require('q');
 const User = require('../models/user');
+const redisClient = require('./redis').client;
+
+const TRACE_EXPIRE_PREFIX = 'TTP_';
+//After how long should the system check if the trace expired
+const TRACE_EXPIRE = 10000;
+const TRACE_EXPIRE_VERIFY = 20000;
+
+function removeDriverTrace(driverId) {
+    geo.removeLocation(driverId, function(err, reply){
+        if(err) console.error(err);
+        else console.log('removed location:', reply);
+    })
+}
 
 function trace(driverId, lat, lon) {
     let deferred = Q.defer();
@@ -14,9 +27,31 @@ function trace(driverId, lat, lon) {
         else {
             logger.log('added location:', reply);
             deferred.resolve(reply);
+
+            //Handle expiry
+            //TODO: in case of lag and the last timeout did not expire, implement clearTimeout
+            const TRACE_TIMEOUT_KEY = `${TRACE_EXPIRE_PREFIX}${driverId}`;
+            redisClient.set(TRACE_TIMEOUT_KEY, driverId);
+            redisClient.expire(TRACE_TIMEOUT_KEY, TRACE_EXPIRE/1000);
+
+            setTimeout(() => {
+                console.info(`Driver trace expiry triggered for driver: ${driverId}`);
+
+                redisClient.get(TRACE_TIMEOUT_KEY, (err, reply) => {
+                    if(err) {
+                        console.info(`Driver trace expired: ${TRACE_TIMEOUT_KEY}! Removing Location!`);
+                        removeDriverTrace(driverId);
+                    }
+                    else {
+                        console.log(`Driver info in timeout =====>`, reply);
+                        if(!reply) {
+                            removeDriverTrace(driverId);
+                        }
+                    }
+                });
+            }, TRACE_EXPIRE_VERIFY)
         }
     });
-
 
 
     return deferred.promise;
