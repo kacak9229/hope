@@ -1,6 +1,12 @@
 let io;
+const config = require('../config/secret');
 const driverManager = require('./../modules/driver-manager');
+const customerManager = require('../modules/customer-manager');
 const redisClient = require('./redis').client;
+const socketioJwt   = require("socketio-jwt");
+const Q = require('q');
+const Job = require('../models/job');
+const JOB_EXPIRES_IN = 3600 * 5; //IN SECS
 
 function handleBooking(customerId) {
     console.log('BOOKING: ', customerId);
@@ -13,20 +19,92 @@ function handleBooking(customerId) {
             console.log('Confirming job to driver: ', driverId);
 
             redisClient.get(driverId, function(err, driverSocketId) {
-                io.to(driverSocketId).emit('job', {
-                    customerId: customerId
+                redisClient.get(`job-${customerId}`, (err, j) => {
+                    io.to(driverSocketId).emit('job', {
+                        customerId: customerId,
+                        job: JSON.parse(j)
+                    });
+
+                    //Extend the job expiry
+                    //Setting to 5 hours for now.
+                    //TODO: each job may have diferent expiry based on distance and traffic
+                    redisClient.expire(`job-${customerId}`, JOB_EXPIRES_IN);
+
+                    //confirm customer
+                    redisClient.get(`sock-${customerId}`, function(err, customerSockerId) {
+                        io.to(customerSockerId).emit('bookResponse', [j]);
+                    });
                 });
 
-                //confirm customer
-                redisClient.get(`sock-${customerId}`, function(customerSockerId) {
-                    io.to(customerSockerId).emit('bookResponse', [driverId]);
+                Q.all([
+                    customerManager.findByFacebookId(customerId),
+                    driverManager.findByFacebookId(driverId)
+                ])
+                .then(function(users) {
+                    console.log('Found customer and driver in mongo: ', users);
+                    //Save
+
+                    redisClient.get(`job-${customerId}`, (err, j) => {
+                        if(err) {
+                            console.log('Error finding job in redis', err);
+                        }
+                        else {
+                            console.log('Found job in redis -->', j);
+
+                            //Save the job for driver as well
+                            //TODO: saving a job for customer and driver should be encapsulated in a function
+                            redisClient.set(`job-${driverId}`, j);
+                            redisClient.expire(`job-${driverId}`, JOB_EXPIRES_IN);
+
+                            const blinkJob = JSON.parse(j);
+
+                            let job = new Job();
+                            job.passenger = users[0]._id;
+                            job.driver = users[1]._id;
+
+                            /*
+                             { secondLong: 101.7131072,
+                             user_id: '1958609537756426',
+                             lat: 3.17140845682656,
+                             price: 12.078,
+                             long: 101.6667575785114,
+                             secondLat: 3.148482 }
+                             */
+
+                            job.source_location.address = 'sample source address';
+                            job.source_location.coordinates.lat = blinkJob.lat;
+                            job.source_location.coordinates.long = blinkJob.long;
+
+                            job.to_location.address = 'Sample destination';
+                            job.to_location.coordinates.lat = blinkJob.secondLat;
+                            job.to_location.coordinates.long = blinkJob.secondLong;
+
+                            job.total_price = parseFloat(blinkJob.price).toFixed(2);
+
+                            job.save((err) => {
+                                if(err) {
+                                    console.error('ERROR saving job in Mongo: ', err);
+                                }
+                                else {
+                                    console.log('SUCCESSFULLY saved job in Mongo!');
+                                }
+                            });
+                        }
+                    });
+                })
+                .catch((err) => {
+                    console.error('Error finding customer and driver from DB', err);
                 });
             });
-        }
-        else {
+        } else {
             console.info(`No drivers were found`);
-            redisClient.get(`sock-${customerId}`, function(customerSockerId) {
+            redisClient.get(`sock-${customerId}`, function(err, customerSockerId) {
                 io.to(customerSockerId).emit('bookResponse', []);
+
+                //Delete the job for customer since there is no driver
+                redisClient.del(`job-${customerId}`, (err, reply) => {
+                    console.log(`Customer job deleted: `, err, reply);
+                });
             });
         }
     });
@@ -34,6 +112,23 @@ function handleBooking(customerId) {
 
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
+    console.log(socket.decoded_token._doc);
+
+    const facebookId = socket.decoded_token._doc.facebookId;
+    console.log(`Facebook id is: ${facebookId}`);
+
+    //Check if user has an existing job in progress
+    redisClient.get(`job-${facebookId}`, (err, j) => {
+        console.log('job status =====> ', err, j);
+        if (err) {
+            console.log('Error finding job in redis', err);
+        }
+        else {
+            if(j) {
+                socket.emit('job', j);
+            }
+        }
+    });
 
     socket.on('message', (msg) => {
         socket.emit('message', {
@@ -82,7 +177,17 @@ function connection(socket) {
 
       console.info(`received booking: `, msg);
 
+        /**
+         * Set the job for customer
+         * One customer can have job at a single point of time
+         * Job will have an expiry.
+         * If a driver is assigned to the job then n hours
+         * If no drivers found then delete the job
+         */
+
       redisClient.set(`sock-${customerId}`, socket.id);
+      redisClient.set(`job-${customerId}`, JSON.stringify(msg));
+
       //console.log(`Customer id: ${customerId} is mapped with socket id: ${socket.id}`);
 
       redisClient.del(customerId, function(err, reply) {
@@ -122,11 +227,51 @@ function connection(socket) {
 
     socket.on('acceptJob', (job) => {
       const customerId = job.customer_id;
-      console.log('ACCPETED JOB: ', job);
+      console.log('ACCEPTED JOB: ', job);
 
       redisClient.sadd([customerId, job.driver_id], function(err, reply) {
         console.log(`Driver added to accept queue: ${customerId}`);
       });
+    });
+
+    socket.on('pickup', (job) => {
+        //Passenger is in the car now.
+    });
+
+    socket.on('dropoff', (job) => {
+        //Driver says that journey is completed
+        const customerId = job.customer_id;
+        const driverId = job.driver_id;
+        console.log('Dropoff: ', job);
+
+        //Delete the driver's job
+        redisClient.del(`job-${driverId}`, (err, reply) => {
+            console.log(arguments);
+        });
+
+        //Delete the customer's job
+        redisClient.del(`job-${customerId}`, (err, reply) => {
+            console.log(arguments);
+        });
+    });
+
+    socket.on('cancel', (job) => {
+        //Driver says that journey is completed
+        const customerId = job.customer_id;
+        const driverId = job.driver_id;
+        console.log('Cancelled job: ', job);
+
+        //Delete the driver's job
+        redisClient.del(`job-${driverId}`, (err, reply) => {
+            console.log(arguments);
+        });
+
+        //Delete the customer's job
+        redisClient.del(`job-${customerId}`, (err, reply) => {
+            console.log(arguments);
+        });
+
+        //TODO: notify both driver and customer
     });
 
     socket.on('disconnect', () => {
@@ -143,6 +288,16 @@ module.exports = function(server=null) {
     if(!io) {
         io = require('socket.io')(server);
     }
+
+    // io.sockets
+    //     .on('connection', socketioJwt.authorize({
+    //         secret: config.secret,
+    //         timeout: 15000 // 15 seconds to send the authentication message
+    //     })).on('authenticated', function(socket) {
+    //         console.log("Im here actually!");
+    //         connection(socket);
+    //     });
+
 
     io.sockets.on('connection', connection);
 
