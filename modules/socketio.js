@@ -110,6 +110,20 @@ function handleBooking(customerId) {
     });
 }
 
+function endJob(customerId, driverId) {
+    const endDriver = Q.ninvoke(redisClient, "del", `job-${driverId}`);
+    const endCustomer = Q.ninvoke(redisClient, "del", `job-${customerId}`);
+
+    Q.all([endCustomer, endDriver])
+        .then((results) => {
+            console.log('ENDING JOBS Customer: ', results[0]);
+            console.log('SUCCESS ENDING Driver: ', results[1]);
+        })
+        .catch((err) => {
+            console.error('Error ending jobs: ', err);
+        });
+}
+
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
     console.log(socket.decoded_token._doc);
@@ -234,24 +248,21 @@ function connection(socket) {
       });
     });
 
+    socket.on('endJob', (job) => {
+        const customerId = job.customer_id;
+        const driverId = job.driver_id;
+        endJob(customerId, driverId);
+    });
+
     socket.on('pickup', (job) => {
         //Passenger is in the car now.
     });
 
     socket.on('dropoff', (job) => {
-        //Driver says that journey is completed
         const customerId = job.customer_id;
-        const driverId = job.driver_id;
-        console.log('Dropoff: ', job);
 
-        //Delete the driver's job
-        redisClient.del(`job-${driverId}`, (err, reply) => {
-            console.log(arguments);
-        });
-
-        //Delete the customer's job
-        redisClient.del(`job-${customerId}`, (err, reply) => {
-            console.log(arguments);
+        redisClient.get(customerId, function(err, customerSocketId) {
+            io.to(customerSocketId).emit('dropoff', job);
         });
     });
 
