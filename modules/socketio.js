@@ -255,7 +255,11 @@ function connection(socket) {
     });
 
     socket.on('pickup', (job) => {
-        //Passenger is in the car now.
+        const customerId = job.customer_id;
+
+        redisClient.get(customerId, function(err, customerSocketId) {
+            io.to(customerSocketId).emit('pickup', job);
+        });
     });
 
     socket.on('dropoff', (job) => {
@@ -267,27 +271,28 @@ function connection(socket) {
     });
 
     socket.on('cancel', (job) => {
-        //Driver says that journey is completed
+        //if driver or customer cancels
         const customerId = job.customer_id;
         const driverId = job.driver_id;
         console.log('Cancelled job: ', job);
 
-        //Delete the driver's job
-        redisClient.del(`job-${driverId}`, (err, reply) => {
-            console.log(arguments);
+        endJob(customerId, driverId);
+
+        //Notify both driver and customer
+        redisClient.get(customerId, function(err, customerSocketId) {
+            io.to(customerSocketId).emit('cancel', job);
         });
 
-        //Delete the customer's job
-        redisClient.del(`job-${customerId}`, (err, reply) => {
-            console.log(arguments);
+        redisClient.get(driverId, function(err, driverSocketId) {
+            io.to(driverSocketId).emit('cancel', job);
         });
-
-        //TODO: notify both driver and customer
     });
 
     socket.on('disconnect', () => {
         console.log('Disconnected', socket.id);
         console.log('total connections: ', io.engine.clientsCount);
+
+        //TODO: delete id to socket.id mappings
     });
 }
 
