@@ -10,7 +10,10 @@ const JOB_EXPIRES_IN = 3600 * 5; //IN SECS
 
 function handleBooking(customerId) {
     console.log('BOOKING: ', customerId);
-    redisClient.smembers(customerId, function(err, driverIds) {
+    redisClient.smembers(`j-${customerId}`, function(err, driverIds) {
+        if(err) {
+            console.error('!!! ERROR GETTING SMEMBERS', err);
+        }
         console.log('Job info ==> ', driverIds);
 
         if(driverIds.length > 0) {
@@ -31,9 +34,21 @@ function handleBooking(customerId) {
                     redisClient.expire(`job-${customerId}`, JOB_EXPIRES_IN);
 
                     //confirm customer
-                    redisClient.get(`sock-${customerId}`, function(err, customerSockerId) {
-                        io.to(customerSockerId).emit('bookResponse', [j]);
-                    });
+                    getDriverInfo(driverId)
+                        .then(function(d) {
+                            console.log('!!!!!!!!! ====>', d);
+
+                            redisClient.get(`${customerId}`, function(err, customerSockerId) {
+                                let jInfo = JSON.parse(j);
+                                jInfo.driverInfo = d;
+
+                                io.to(customerSockerId).emit('bookResponse', [jInfo]);
+                                console.info('!!! bookResponse: ', jInfo);
+                            });
+                        })
+                        .catch(function(err) {
+                            console.error('Error getting driver info', err);
+                        })
                 });
 
                 Q.all([
@@ -124,6 +139,48 @@ function endJob(customerId, driverId) {
         });
 }
 
+function setDriverInfo(driverInfo) {
+    redisClient.set(`driverInfo_${driverInfo.driver_id}`, JSON.stringify(driverInfo), function (err, reply) {
+        if(err) console.error(err);
+        else {
+            /*
+            getDriverInfo(driverInfo.driver_id)
+                .then(function(d) {
+                    console.log('!!! RETRIVED driver info:', d.driver_id);
+                })
+                .catch(function(err) {
+                  console.error('Error getting driver info', err);
+                })
+            */
+        }
+    });
+}
+
+function getDriverInfo(driverId) {
+    const deferred = Q.defer();
+
+    redisClient.get(`driverInfo_${driverId}`, (err, dInfo) => {
+        console.log('Got driver info =====> ', err, dInfo);
+
+        if (err) {
+            console.error('Error getting driver info', err);
+            deferred.reject(new Error(err));
+        }
+        else {
+            if(dInfo) {
+                deferred.resolve(JSON.parse(dInfo));
+            }
+            else {
+                const msg = `Could not find driver info for Driver Id: ${driverId}`;
+                console.error(msg);
+                deferred.reject(new Error(msg));
+            }
+        }
+    });
+
+    return deferred.promise;
+}
+
 function connection(socket) {
     console.log('total connections: ', io.engine.clientsCount);
     console.log(socket.decoded_token._doc);
@@ -176,13 +233,22 @@ function connection(socket) {
           });
     });
 
-    socket.on('auth', (msg) => {
-        socket.emit('message', {
-            stats: 'OK',
-            msg: msg
-        });
+    //Sent by customer
+    socket.on('ping', (msg) => {
+        let customerId = msg.customer_id + '';
+        let lat = msg.lat;
+        let lon = msg.long;
+
+        console.log('ping is: ', msg);
+
+        redisClient.set(customerId, socket.id);
     });
 
+    //driverInfo is triggered on server has established connection with the driver
+    socket.on('driverInfo', (driverInfo) => {
+        console.log('!!! got driver info: ', driverInfo);
+        setDriverInfo(driverInfo);
+    });
 
     socket.on('book', (msg) => {
       let customerId = msg.user_id;
@@ -230,21 +296,18 @@ function connection(socket) {
             err: err
           });
         });
-
-      /*
-      socket.broadcast.emit('toAllDrivers', {
-        stats: 'OK',
-        msg: msg
-      });
-      */
     });
 
     socket.on('acceptJob', (job) => {
       const customerId = job.customer_id;
       console.log('ACCEPTED JOB: ', job);
 
-      redisClient.sadd([customerId, job.driver_id], function(err, reply) {
+      redisClient.sadd([`j-${customerId}`, job.driver_id], function(err, reply) {
         console.log(`Driver added to accept queue: ${customerId}`);
+        if(err) console.error(err);
+        else {
+            console.info('!!! SUCCESSFULLY ADDED DRIVER TO JOB QUEUE: ', job.driver_id, reply);
+        }
       });
     });
 
@@ -257,7 +320,10 @@ function connection(socket) {
     socket.on('pickup', (job) => {
         const customerId = job.customer_id;
 
-        redisClient.get(customerId, function(err, customerSocketId) {
+        console.log('!!! PICKUP =>', job);
+
+        redisClient.get(`${customerId}`, function(err, customerSocketId) {
+            console.log('sending pickup to customer ----> ', customerSocketId);
             io.to(customerSocketId).emit('pickup', job);
         });
     });
@@ -265,7 +331,7 @@ function connection(socket) {
     socket.on('dropoff', (job) => {
         const customerId = job.customer_id;
 
-        redisClient.get(customerId, function(err, customerSocketId) {
+        redisClient.get(`${customerId}`, function(err, customerSocketId) {
             io.to(customerSocketId).emit('dropoff', job);
         });
     });
