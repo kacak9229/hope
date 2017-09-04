@@ -3,7 +3,7 @@ const User = require('../models/user');
 
 const jwt = require('jsonwebtoken');
 const config = require('../config/secret');
-
+const JWT_EXPIRE = 3600 * 24 * 365;
 
 /* Router for facebook-login - Most of the OAUTH stuff is done by the frontend */
 router.post('/facebook-login', (req, res, next) => {
@@ -14,7 +14,7 @@ router.post('/facebook-login', (req, res, next) => {
     // If user does exist then create a jsonwebtoken then send to the client
     if (user) {
       var token = jwt.sign(user, config.secret, {
-       expiresIn: 1440 // expires in 24 hours
+       expiresIn: JWT_EXPIRE
      });
      return res.json({
        status: 201,
@@ -30,7 +30,7 @@ router.post('/facebook-login', (req, res, next) => {
       user.photo = req.body.pictureURL
       user.save(function(err) {
         var token = jwt.sign(user, config.secret, {
-          expiresIn: 1440 // expires in 24 hours
+          expiresIn: JWT_EXPIRE
         });
 
        return res.json({
