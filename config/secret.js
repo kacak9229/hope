@@ -7,8 +7,8 @@ module.exports = {
     level: 'debug'
   },
   redis: {
-    host: 'redis-10411.c15.us-east-1-2.ec2.cloud.redislabs.com',
-    port: 10411
+    host: 'localhost',
+    port: 6379
   },
   twilio: {
       TWILIO_ACCOUNT_SID: '',
