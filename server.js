@@ -55,12 +55,14 @@ const driverRoutes = require('./routes/driver');
 const jobRoutes = require('./routes/job');
 const webRoutes = require('./routes/web');
 const twilioRoutes = require('./routes/twilio');
+const reviewRoutes = require('./routes/review');
 
 app.use('/api/accounts', accountRoutes);
 app.use('/api/passengers', passengerRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/pin', twilioRoutes);
+app.use('/api/review', reviewRoutes);
 app.use(webRoutes);
 /* END APIS'S URL */
 
