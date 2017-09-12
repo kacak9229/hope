@@ -42,6 +42,9 @@ function handleBooking(customerId) {
                                 let jInfo = JSON.parse(j);
                                 jInfo.driverInfo = d;
 
+                                //save driver's info for this customer
+                                redisClient.set(`customerToDriver_${customerId}`, d);
+
                                 io.to(customerSockerId).emit('bookResponse', [jInfo]);
                                 console.info('!!! bookResponse: ', jInfo);
                             });
@@ -198,18 +201,13 @@ function connection(socket) {
                 console.log('job info is this: ', j);
                 //j contains the following
                 //{"userFirstName":"Naufal","long":101.6666826599365,"userPicture":"https://scontent.xx.fbcdn.net/v/t1.0-1/s200x200/10354686_10150004552801856_220367501106153455_n.jpg?oh=15d2a031f62e0fb0f0a82c5ec221c5b6&oe=5A4E8450","user_id":"1958609537756426","lat":3.171404577857107,"price":12.067,"secondLat":3.1487063,"secondLong":101.7131118}
-                /*
-                getDriverInfo(j.user_id)
-                    .then(function(d) {
 
-                    })
-                    .catch(function(err) {
-                        console.error('Error getting driver info', err);
-                    });
-                */
+                redisClient.get(`customerToDriver_${customerId}`, function (err, reply) {
+                    let job = JSON.parse(j);
+                    job.driverInfo = reply;
 
-
-                socket.emit('job', JSON.parse(j));
+                    socket.emit('job', job);
+                });
             }
         }
     });
