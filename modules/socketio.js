@@ -195,6 +195,16 @@ function connection(socket) {
             console.log('Error finding job in redis', err);
         } else {
             if(j) {
+                console.log('job info is this: ', j);
+                /*getDriverInfo(driverId)
+                    .then(function(d) {
+
+                    })
+                    .catch(function(err) {
+                        console.error('Error getting driver info', err);
+                    });*/
+
+
                 socket.emit('job', JSON.parse(j));
             }
         }
