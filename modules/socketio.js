@@ -43,7 +43,7 @@ function handleBooking(customerId) {
                                 jInfo.driverInfo = d;
 
                                 //save driver's info for this customer
-                                redisClient.set(`customerToDriver_${customerId}`, d);
+                                redisClient.set(`customerToDriver_${customerId}`, JSON.stringify(d));
 
                                 io.to(customerSockerId).emit('bookResponse', [jInfo]);
                                 console.info('!!! bookResponse: ', jInfo);
