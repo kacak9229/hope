@@ -9,5 +9,10 @@ module.exports = {
   redis: {
     host: 'redis-10411.c15.us-east-1-2.ec2.cloud.redislabs.com',
     port: 10411
+  },
+  twilio: {
+      TWILIO_ACCOUNT_SID: '',
+      TWILIO_AUTH_TOKEN: '',
+      TWILIO_PHONE_NUMBER: ''
   }
 };

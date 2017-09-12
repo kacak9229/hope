@@ -15,6 +15,9 @@ global.config = config;
 const app = express();
 const server = require('http').Server(app);
 
+//Initialize twilio
+const blinkTwilio = require('./modules/blink-twilio');
+
 const io = require('./modules/socketio')(server);
 
 io.use(socketioJwt.authorize({
