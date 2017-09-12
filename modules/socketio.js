@@ -193,10 +193,9 @@ function connection(socket) {
         console.log('job status =====> ', err, j);
         if (err) {
             console.log('Error finding job in redis', err);
-        }
-        else {
+        } else {
             if(j) {
-                socket.emit('job', j);
+                socket.emit('job', JSON.parse(j));
             }
         }
     });
@@ -315,6 +314,10 @@ function connection(socket) {
         const customerId = job.customer_id;
         const driverId = job.driver_id;
         endJob(customerId, driverId);
+        redisClient.get(`${customerId}`, function(err, customerSocketId) {
+            console.log('sending pickup to customer ----> ', customerSocketId);
+            io.to(customerSocketId).emit('endJob', job);
+        });
     });
 
     socket.on('pickup', (job) => {
