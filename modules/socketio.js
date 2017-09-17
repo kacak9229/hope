@@ -9,18 +9,18 @@ const Job = require('../models/job');
 const JOB_EXPIRES_IN = 3600 * 5; //IN SECS
 const debug = require('debug')('driverinfo');
 const logger = require('./logger');
-
+/*
 const console = {
     log: function() {
-        //do nothing
+        logger.info(arguments);
     },
     info: function() {
-        //do nothing
+        logger.info(arguments);
     },
     error: function() {
-        //do nothing
+        logger.error(arguments);
     }
-};
+};*/
 
 
 function handleBooking(customerId) {
@@ -157,11 +157,13 @@ function handleBooking(customerId) {
 function endJob(customerId, driverId) {
     const endDriver = Q.ninvoke(redisClient, "del", `job-${driverId}`);
     const endCustomer = Q.ninvoke(redisClient, "del", `job-${customerId}`);
+    const endJob = Q.ninvoke(redisClient, "del", `j-${customerId}`);
 
-    Q.all([endCustomer, endDriver])
+    Q.all([endCustomer, endDriver, endJob])
         .then((results) => {
             console.log('ENDING JOBS Customer: ', results[0]);
             console.log('SUCCESS ENDING Driver: ', results[1]);
+            console.log('SUCCESS deleting job: ', results[2]);
         })
         .catch((err) => {
             console.error('Error ending jobs: ', err);
