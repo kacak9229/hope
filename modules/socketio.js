@@ -9,6 +9,8 @@ const Job = require('../models/job');
 const JOB_EXPIRES_IN = 3600 * 5; //IN SECS
 const debug = require('debug')('driverinfo');
 const logger = require('./logger');
+const _ = require('lodash');
+
 /*
 const console = {
     log: function() {
@@ -34,7 +36,11 @@ function handleBooking(customerId) {
 
         if(driverIds.length > 0) {
             //TODO: choose the nearest one
-            let driverId = driverIds[0];
+            //Choose a random driver
+            const driverIndex = _.random(0, driverIds.length - 1);
+            logger.info('Driver index', driverIndex, driverIds);
+
+            let driverId = driverIds[driverIndex];
             console.log('Confirming job to driver: ', driverId);
 
             redisClient.get(driverId, function(err, driverSocketId) {
