@@ -1,4 +1,7 @@
 const redisClient = require('./redis').client;
+const logger = require('./logger');
+
+//TODO: decouple redis from twilio. Redis should communicate using events
 
 const client = require('twilio')(
     global.config.twilio.TWILIO_ACCOUNT_SID,
@@ -13,14 +16,16 @@ function sendSMS(phoneNumber, body, cb) {
         from: global.config.twilio.TWILIO_PHONE_NUMBER,
         to: phoneNumber,
         body: body
-    }).then(msg => cb(msg));
+    })
+        .then(msg => cb(null, msg))
+        .catch((err) => {
+            cb(err);
+        });
 }
 
 function sendPIN(phoneNumber, cb) {
     const pin = Math.floor(1000 + Math.random() * 9000);
     sendSMS(phoneNumber, pin, function(msg) {
-        console.info('TWILIO: SMS result: ', msg);
-
         redisClient.set(phoneNumber, pin);
         redisClient.expire(phoneNumber, PIN_VALID_FOR);
 
@@ -33,6 +38,11 @@ function verifyPIN(phoneNumber, pin, cb) {
         if(err) cb(new Error(err));
         else {
             cb(null, pin === savedPIN);
+
+            //remove the key from redis if pin matched
+            if(pin === savedPIN) {
+                redisClient.del(phoneNumber);
+            }
         }
     });
 }

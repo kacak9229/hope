@@ -11,7 +11,7 @@ router.post('/', checkJWT, (req, res, next) => {
   let review = new Review();
   review.job = jobId;
   review.comment = comment;
-  review.star = star;
+  review.star = parseInt(star);
 
   review.save();
 

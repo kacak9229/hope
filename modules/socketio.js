@@ -8,7 +8,7 @@ const Q = require('q');
 const Job = require('../models/job');
 const JOB_EXPIRES_IN = 3600 * 5; //IN SECS
 const debug = require('debug')('driverinfo');
-const winston = require('winston');
+const logger = require('./logger');
 
 const console = {
     log: function() {
@@ -59,7 +59,7 @@ function handleBooking(customerId) {
                                 jInfo.driverInfo = d;
 
                                 //save driver's info for this customer
-                                winston.info(`customerToDriver_${customerId} with value`, d);
+                                logger.info(`customerToDriver_${customerId} with value`, d);
                                 redisClient.set(`customerToDriver_${customerId}`, JSON.stringify(d));
 
                                 io.to(customerSockerId).emit('bookResponse', [jInfo]);
@@ -116,11 +116,20 @@ function handleBooking(customerId) {
 
                             job.total_price = parseFloat(blinkJob.price).toFixed(2);
 
-                            job.save((err) => {
+                            job.save((err, saveResult) => {
                                 if(err) {
-                                    console.error('ERROR saving job in Mongo: ', err);
+                                    logger.error('ERROR saving job in Mongo: ', err);
                                 }
                                 else {
+                                    //Send job id of mongo to the customer for reviewing
+                                    redisClient.get(`${customerId}`, function(err, customerSockerId) {
+                                        if(err) logger.error(err);
+                                        else {
+                                            io.to(customerSockerId).emit('jobId', saveResult.id);
+                                            logger.info('Sending jobId to customer', saveResult.id);
+                                        }
+                                    });
+
                                     console.log('SUCCESSFULLY saved job in Mongo!');
                                 }
                             });
@@ -219,15 +228,15 @@ function connection(socket) {
                 //j contains the following
                 //{"userFirstName":"Naufal","long":101.6666826599365,"userPicture":"https://scontent.xx.fbcdn.net/v/t1.0-1/s200x200/10354686_10150004552801856_220367501106153455_n.jpg?oh=15d2a031f62e0fb0f0a82c5ec221c5b6&oe=5A4E8450","user_id":"1958609537756426","lat":3.171404577857107,"price":12.067,"secondLat":3.1487063,"secondLong":101.7131118}
 
-                winston.info(`Trying to get: customerToDriver_${facebookId}`);
+                logger.info(`Trying to get: customerToDriver_${facebookId}`);
                 redisClient.get(`customerToDriver_${facebookId}`, function (err, reply) {
-                    winston.info(`customerToDriver_${facebookId} value: `, err, reply);
+                    logger.info(`customerToDriver_${facebookId} value: `, err, reply);
 
                     let job = JSON.parse(j);
                     job.driverInfo = JSON.parse(reply);
 
                     socket.emit('job', job);
-                    winston.info(`Sent initial job to ${facebookId}`, job);
+                    logger.info(`Sent initial job to ${facebookId}`, job);
                 });
             }
         }

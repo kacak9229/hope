@@ -5,10 +5,19 @@ const blinkTwilio = require('./../modules/blink-twilio');
 
 
 router.post('/', checkJWT, (req, res, next) => {
+    logger.debug('Req for sending pin to: ', req.body.phoneNumber);
     let phoneNumber = req.body.phoneNumber;
 
-    blinkTwilio.sendPIN(phoneNumber, function(result) {
-      logger.info(result);
+    //TODO: validate phone number
+    if(!phoneNumber) {
+        logger.warn('Invalid phone number: ', req.body.phoneNumber);
+        return res.status(400).json({
+            status: 'Invalid',
+        });
+    }
+
+    blinkTwilio.sendPIN(phoneNumber, (err, result) => {
+      logger.info(err, result);
 
       //TODO: Handle errors here when needed
       res.json({
@@ -18,6 +27,8 @@ router.post('/', checkJWT, (req, res, next) => {
 });
 
 router.post('/verify', checkJWT, (req, res, next) => {
+    logger.debug('Verify pin for: ', req.body.phoneNumber);
+
     let phoneNumber = req.body.phoneNumber;
     let pin = req.body.pin;
 
