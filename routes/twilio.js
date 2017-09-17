@@ -3,6 +3,8 @@ const router = require('express').Router();
 const checkJWT = require('../middlewares/checking-jwt');
 const blinkTwilio = require('./../modules/blink-twilio');
 
+const customerManager = require('./../modules/customer-manager');
+
 
 router.post('/', checkJWT, (req, res, next) => {
     logger.debug('Req for sending pin to: ', req.body.phoneNumber);
@@ -44,6 +46,20 @@ router.post('/verify', checkJWT, (req, res, next) => {
           res.json({
              status: matched === true ? 'OK' : 'INVALID'
           });
+
+          if(matched) {
+              //get fb id
+              const fbid = req.decoded.facebookId;
+              customerManager.findByFacebookId(fbid)
+                  .then(u => {
+                      u.phone = phoneNumber;
+                      u.save();
+                      logger.info('Saved verified phone number!', u);
+                  })
+                  .catch(err => {
+                      logger.error(err);
+                  });
+          }
         }
     })
 });
