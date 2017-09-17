@@ -6,9 +6,9 @@ const config = require('../config/secret');
 const JWT_EXPIRE = 3600 * 24 * 365;
 
 /* Router for facebook-login - Most of the OAUTH stuff is done by the frontend */
+//TODO: have different end points for different user types
+//Or send the role from the mobile
 router.post('/facebook-login', (req, res, next) => {
-
-  console.log(req.body)
   User.findOne({ facebookId: req.body.facebookId }, function(err, user) {
 
     // If user does exist then create a jsonwebtoken then send to the client
